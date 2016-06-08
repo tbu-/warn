@@ -1,0 +1,11 @@
+[package]
+name = "warn"
+version = "0.1.0"
+authors = ["Tobias Bucher <tobiasbucher5991@gmail.com>"]
+
+description = "A library for a warning callback trait"
+repository = "https://github.com/tbu-/warn"
+license = "MIT/Apache-2.0"
+
+[dependencies]
+log = "0.3.0"
