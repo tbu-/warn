@@ -6,6 +6,8 @@
 
 use std::any::Any;
 use std::fmt;
+use std::marker::PhantomData;
+use std::mem;
 
 /// Trait for objects that can accept warnings.
 pub trait Warn<W> {
@@ -50,6 +52,25 @@ pub struct Log;
 impl<W: fmt::Debug> Warn<W> for Log {
     fn warn(&mut self, warning: W) {
         warn!("{:?}", warning);
+    }
+}
+
+/// Helper struct for the `wrap` function.
+pub struct Wrap<WT, W: Warn<WT>> {
+    warn: W,
+    phantom: PhantomData<WT>,
+}
+
+/// Wraps a `Warn` struct so it can receive more warning types.
+pub fn wrap<WT, W: Warn<WT>>(warn: &mut W) -> &mut Wrap<WT, W> {
+    unsafe {
+        mem::transmute(warn)
+    }
+}
+
+impl<WT, WF: Into<WT>, W: Warn<WT>> Warn<WF> for Wrap<WT, W> {
+    fn warn(&mut self, warning: WF) {
+        self.warn.warn(warning.into());
     }
 }
 

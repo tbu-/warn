@@ -1,6 +1,6 @@
 [package]
 name = "warn"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Tobias Bucher <tobiasbucher5991@gmail.com>"]
 
 description = "A library for a warning callback trait"
