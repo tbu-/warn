@@ -37,9 +37,9 @@ impl<W> Warn<W> for Ignore {
 #[derive(Clone, Copy, Debug, Eq, Ord, Hash, PartialEq, PartialOrd)]
 pub struct Panic;
 
-impl<W: Any+Send> Warn<W> for Panic {
+impl<W: Any+fmt::Debug+Send> Warn<W> for Panic {
     fn warn(&mut self, warning: W) {
-        panic!(warning);
+        panic!("{:?}", warning);
     }
 }
 
