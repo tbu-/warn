@@ -55,6 +55,32 @@ impl<W: fmt::Debug> Warn<W> for Log {
     }
 }
 
+/// Helper struct for the `rev_map` function.
+pub struct RevMap<'a, WF, WT, W: Warn<WT> + 'a, F: FnMut(WF) -> WT> {
+    warn: &'a mut W,
+    fn_: F,
+    phantom: PhantomData<fn(WF) -> WT>,
+}
+
+/// Applies a function to all warnings passed to this, before passing it to the
+/// underlying warn object.
+pub fn rev_map<WF, WT, W, F>(warn: &mut W, fn_: F) -> RevMap<WF, WT, W, F>
+    where W: Warn<WT>,
+          F: FnMut(WF) -> WT,
+{
+    RevMap {
+        warn: warn,
+        fn_: fn_,
+        phantom: PhantomData,
+    }
+}
+
+impl<'a, WF, WT, W: Warn<WT>, F: FnMut(WF) -> WT> Warn<WF> for RevMap<'a, WF, WT, W, F> {
+    fn warn(&mut self, warning: WF) {
+        self.warn.warn((self.fn_)(warning));
+    }
+}
+
 /// Helper struct for the `wrap` function.
 pub struct Wrap<WT, W: Warn<WT>> {
     warn: W,
@@ -80,13 +106,21 @@ mod test {
     use super::Log;
     use super::Panic;
     use super::Warn;
+    use super::rev_map;
 
     const WARNING: &'static str = "unique_string";
+    const WARNING2: &'static str = "unique_no2";
 
     #[test]
-    #[should_panic="unique_string"]
+    #[should_panic(expected="unique_string")]
     fn panic() {
         Panic.warn(WARNING);
+    }
+
+    #[test]
+    #[should_panic(expected="unique_no2")]
+    fn map() {
+        rev_map(&mut Panic, |_| WARNING2).warn(WARNING);
     }
 
     #[test]
