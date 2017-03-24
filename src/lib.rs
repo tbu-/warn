@@ -7,7 +7,6 @@
 use std::any::Any;
 use std::fmt;
 use std::marker::PhantomData;
-use std::mem;
 
 /// Trait for objects that can accept warnings.
 pub trait Warn<W> {
@@ -81,6 +80,25 @@ impl<'a, WF, WT, W: Warn<WT>, F: FnMut(WF) -> WT> Warn<WF> for RevMap<'a, WF, WT
     }
 }
 
+/// Helper struct for the `closure` function.
+pub struct Closure<W, F: FnMut(W)> {
+    fn_: F,
+    phantom: PhantomData<fn(W)>,
+}
+
+/// Applies a function to all warnings passed to this object.
+pub fn closure<W, F: FnMut(W)>(fn_: &mut F) -> &mut Closure<W, F> {
+    unsafe {
+        &mut *(fn_ as *mut _ as *mut _)
+    }
+}
+
+impl<W, F: FnMut(W)> Warn<W> for Closure<W, F> {
+    fn warn(&mut self, warning: W) {
+        (self.fn_)(warning)
+    }
+}
+
 /// Helper struct for the `wrap` function.
 pub struct Wrap<WT, W: Warn<WT>> {
     warn: W,
@@ -90,7 +108,7 @@ pub struct Wrap<WT, W: Warn<WT>> {
 /// Wraps a `Warn` struct so it can receive more warning types.
 pub fn wrap<WT, W: Warn<WT>>(warn: &mut W) -> &mut Wrap<WT, W> {
     unsafe {
-        mem::transmute(warn)
+        &mut *(warn as *mut _ as *mut _)
     }
 }
 
@@ -106,7 +124,6 @@ mod test {
     use super::Log;
     use super::Panic;
     use super::Warn;
-    use super::rev_map;
 
     const WARNING: &'static str = "unique_string";
     const WARNING2: &'static str = "unique_no2";
@@ -119,8 +136,19 @@ mod test {
 
     #[test]
     #[should_panic(expected="unique_no2")]
-    fn map() {
-        rev_map(&mut Panic, |_| WARNING2).warn(WARNING);
+    fn rev_map() {
+        super::rev_map(&mut Panic, |_| WARNING2).warn(WARNING);
+    }
+
+    #[test]
+    #[should_panic(expected="unique_no2")]
+    fn closure_panic() {
+        super::closure(&mut |_| panic!(WARNING2)).warn(WARNING);
+    }
+
+    #[test]
+    fn closure_nopanic() {
+        super::closure(&mut |()| panic!(WARNING2));
     }
 
     #[test]
